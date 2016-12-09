@@ -90,6 +90,14 @@ define([
             $('#top-browser-tip .close').click(function () {
                 $('#top-browser-tip').addClass('hide');
             });
+
+            $('#top-search-form').submit(function() {
+                if (!$.trim($('[name="q"]', $(this)).val())) {
+                    return false;
+                }
+                $('[name="referer"]', $(this)).val(location.href);
+            });
+
         },
 
         switchCurrentView: function(newView) {

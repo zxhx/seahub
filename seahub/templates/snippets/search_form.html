@@ -6,6 +6,7 @@
                     {% else %}
                     <input type="text" class="search-input" name="q" placeholder="{% trans 'Search Files' %}" value="{{ keyword }}" />
                     {% endif %}
+                    <input type="hidden" name="referer" value="" />
                     <!--span class="icon-caret-down" title="{% trans "advanced" %}"></span--><button type="submit" class="search-submit"><span class="icon-search"></span></button>
                 </form>
 

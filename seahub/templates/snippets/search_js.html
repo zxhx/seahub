@@ -4,6 +4,9 @@ $('.search-form').submit(function() {
         return false;
     }
 });
+$('#top-search-form').submit(function() {
+    $('[name="referer"]', $(this)).val(location.href);
+});
 $('#top-search-form .icon-caret-down').click(function() {
     var form = $(this).parent(),
         q = form.find('[name="q"]').val(),
