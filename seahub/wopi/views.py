@@ -186,12 +186,20 @@ class WOPIFilesView(APIView):
         x_wopi_oldlock = request.META.get('HTTP_X_WOPI_OLDLOCK', None)
         current_lock_id = get_current_lock_id(request)
 
+        print '-----'
+        print token, request_user, repo_id, file_path
+        print 'x_wopi_override: ', x_wopi_override
+        print 'x_wopi_lock: ', x_wopi_lock
+        print 'x_wopi_oldlock: ', x_wopi_oldlock
+        print 'current_lock_id: ', current_lock_id
+        print '--------'
+
         if x_wopi_override == 'LOCK':
 
             # TODO
-            if file_path.endswith('.xlsx'):
-                x_wopi_oldlock = False
-
+#            if file_path.endswith('.xlsx'):
+#                x_wopi_oldlock = False
+#
             if x_wopi_oldlock:
                 # UnlockAndRelock endpoint
                 if file_is_locked(request):
@@ -201,13 +209,18 @@ class WOPIFilesView(APIView):
                         # the host must return a “lock mismatch” response (409 Conflict)
                         # and include an X-WOPI-Lock response header containing the value of the current lock on the file
                         response_409['X-WOPI-Lock'] = current_lock_id
+                        print 1
+                        print response_409
                         return response_409
                     else:
                         unlock_file(request)
                         lock_file(request)
+                        print 2
                         return HttpResponse()
                 else:
                     response_409['X-WOPI-Lock'] = ''
+                    print 3
+                    print response_409
                     return response_409
             else:
                 # Lock endpoint
@@ -215,6 +228,7 @@ class WOPIFilesView(APIView):
                     # If the file is currently unlocked
                     # the host should lock the file and return 200 OK.
                     lock_file(request)
+                    print 4
                     return HttpResponse()
                 else:
                     # If the file is currently locked
@@ -223,6 +237,7 @@ class WOPIFilesView(APIView):
                     # That is, the host should refresh the lock timer and return 200 OK.
                     if current_lock_id == x_wopi_lock:
                         refresh_file_lock(request)
+                        print 5
                         return HttpResponse()
                     else:
                         # In all other cases
@@ -230,6 +245,8 @@ class WOPIFilesView(APIView):
                         # and include an X-WOPI-Lock response header
                         # containing the value of the current lock on the file.
                         response_409['X-WOPI-Lock'] = current_lock_id
+                        print 6
+                        print response_409
                         return response_409
 
         elif x_wopi_override == 'GET_LOCK':
@@ -239,6 +256,8 @@ class WOPIFilesView(APIView):
                 # the host must return a 200 OK
                 # and include an X-WOPI-Lock response header set to the empty string.
                 response['X-WOPI-Lock'] = ''
+                print 7
+                print response
                 return response
             else:
                 # If the file is currently locked
@@ -246,6 +265,8 @@ class WOPIFilesView(APIView):
                 # and include an X-WOPI-Lock response header
                 # containing the value of the current lock on the file.
                 response['X-WOPI-Lock'] = current_lock_id
+                print 8
+                print response
                 return response
 
         elif x_wopi_override in ('REFRESH_LOCK', 'UNLOCK'):
@@ -256,13 +277,15 @@ class WOPIFilesView(APIView):
                 # and include an X-WOPI-Lock response header containing the value of the current lock on the file
                 if x_wopi_lock != current_lock_id:
                     response_409['X-WOPI-Lock'] = current_lock_id
+                    print 9
+                    print response_409
                     return response_409
                 else:
                     if x_wopi_override == 'REFRESH_LOCK':
                         refresh_file_lock(request)
                     else:
                         unlock_file(request)
-
+                    print 10
                     return HttpResponse()
             else:
                 # or if the file is unlocked
@@ -271,9 +294,12 @@ class WOPIFilesView(APIView):
                 # In the case where the file is unlocked
                 # the host must set X-WOPI-Lock to the empty string
                 response_409['X-WOPI-Lock'] = ''
+                print 11
+                print response_409
                 return response_409
 
         else:
+            print 12
             return HttpResponse(json.dumps({'error_msg': 'HTTP_X_WOPI_OVERRIDE invalid'}),
                     status=401, content_type=json_content_type)
 
