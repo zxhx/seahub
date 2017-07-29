@@ -24,27 +24,18 @@ define([
 
         events: {
             'click #add-trusted-ip-btn': 'showAddTrustedIpForm',
-            'mouseover tbody tr': 'mouseovercard',
-            'mouseout tbody tr': 'mouseoutcard',
-        },
-
-        mouseoutcard: function(e) {
-            $(e.target).parent().find("#remove-trusted-ip").addClass('vh');
-        },
-
-        mouseovercard: function(e) {
-            $(e.target).parent().find("#remove-trusted-ip").removeClass('vh');
         },
 
         showAddTrustedIpForm: function() {
             var $form = $(this.ipAddFormtemplate()),
-                $submitBtn = $("add-ip-form-btn"),
-                _this = this;
+                _this = this,
+                trustedIP = this.deviceTrustedIPAddressCollection;
 
             $form.modal()
             $('#simplemodal-container').css({'width':'auto', 'height':'auto'});
 
             $form.submit(function(){
+                var $submitBtn = $('add-ip-form-btn', $form);
                 var ipaddress = $.trim($('#ipaddress', $form).val());
                 var $error = $('.error', $form);
                 if (!ipaddress) {
@@ -54,12 +45,12 @@ define([
                 $error.hide()
                 Common.disableButton($submitBtn);
 
-                _this.deviceTrustedIPAddressCollection.create({'ipaddress': ipaddress},{
+                trustedIP.create({'ipaddress': ipaddress},{
                     prepend: true,
                     wait: true,
                     success: function() {
-                        if (DeviceTrustedIPAddressCollection.length == 1) {
-                            DeviceTrustedIPAddressCollection.reset(DeviceTrustedIPAddressCollection.models);
+                        if (trustedIP.length == 1) {
+                            trustedIP.reset(trustedIP.models);
                         }
                         Common.closeModal();
                     },
@@ -95,16 +86,23 @@ define([
 
         hide: function() {
             this.$el.detach();
+            this.attached = false;
         },
 
         show: function() {
-            $("#right-panel").html(this.$el);
+            if (!this.attached) {
+                this.attached = true;
+                $("#right-panel").html(this.$el);
+            }
             this.showAdminDeviceTrustedIP();
         },
 
         initPage: function() {
+            this.$loadingTip.show();
             this.$table.hide();
             this.$tableBody.empty();
+            this.$error.hide();
+            this.$emptyTip.hide();
             this.$error.hide();
         },
 
@@ -129,12 +127,17 @@ define([
                         err_msg = gettext("Failed. Please check the network.");
                     }
                     Common.feedback(err_msg, 'error');
+                },
+                complete: function() {
+                    _this.$loadingTip.hide();
                 }
             });
         },
 
         reset: function() {
+            this.initPage();
             this.$loadingTip.hide();
+
             if (this.deviceTrustedIPAddressCollection.length > 0) {
                 this.deviceTrustedIPAddressCollection.each(this.addOne, this);
                 this.$table.show();
