@@ -11,18 +11,19 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import APIView
 import seaserv
-from seaserv import seafile_api, ccnet_threaded_rpc
+from seaserv import seafile_api, ccnet_api
 
 from seahub.api2.authentication import TokenAuthentication
-from seahub.api2.serializers import AccountSerializer
 from seahub.api2.throttling import UserRateThrottle
 from seahub.api2.utils import api_error, to_python_boolean
 from seahub.base.accounts import User
 from seahub.base.templatetags.seahub_tags import email2nickname
 from seahub.profile.models import Profile, DetailedProfile
 from seahub.institutions.models import Institution
-from seahub.utils import is_valid_username, is_org_context
+from seahub.utils import is_valid_username, is_org_context, \
+        is_pro_version
 from seahub.utils.file_size import get_file_size_unit
+from seahub.role_permissions.utils import get_available_roles
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,9 @@ def get_account_info(user):
     info['login_id'] = profile.login_id if profile else ''
     info['total'] = seafile_api.get_user_quota(email)
     info['usage'] = seafile_api.get_user_self_usage(email)
+
+    if is_pro_version():
+        info['role'] = user.role
 
     return info
 
@@ -91,20 +95,20 @@ class Account(APIView):
                 seafile_api.set_repo_owner(r.id, user2.username)
 
             # transfer joined groups to new user
-            for g in seaserv.get_personal_groups_by_user(from_user):
+            for g in ccnet_api.get_personal_groups_by_user(from_user):
                 if not seaserv.is_group_user(g.id, user2.username):
                     # add new user to the group on behalf of the group creator
-                    ccnet_threaded_rpc.group_add_member(g.id, g.creator_name,
+                    ccnet_api.group_add_member(g.id, g.creator_name,
                                                         to_user)
 
                 if from_user == g.creator_name:
-                    ccnet_threaded_rpc.set_group_creator(g.id, to_user)
+                    ccnet_api.set_group_creator(g.id, to_user)
 
             return Response({'success': True})
         else:
             return api_error(status.HTTP_400_BAD_REQUEST, 'op can only be migrate.')
 
-    def _update_account_additional_info(self, request, email):
+    def _update_account_info(self, request, email):
 
         # update account profile
         name = request.data.get("name", None)
@@ -170,12 +174,37 @@ class Account(APIView):
 
     def put(self, request, email, format=None):
 
-        # argument check for email
+        # basic account info check
         if not is_valid_username(email):
             return api_error(status.HTTP_400_BAD_REQUEST,
                     'Email %s invalid.' % email)
 
-        # argument check for name
+        is_staff = request.data.get("is_staff", None)
+        if is_staff is not None:
+            try:
+                is_staff = to_python_boolean(is_staff)
+            except ValueError:
+                return api_error(status.HTTP_400_BAD_REQUEST,
+                        'is_staff invalid.')
+
+        is_active = request.data.get("is_active", None)
+        if is_active is not None:
+            try:
+                is_active = to_python_boolean(is_active)
+            except ValueError:
+                return api_error(status.HTTP_400_BAD_REQUEST,
+                        'is_active invalid.')
+
+        if is_pro_version():
+            role = request.data.get("role", None)
+            if role is not None:
+                role = role.lower()
+                available_roles = get_available_roles()
+                if role not in available_roles:
+                    error_msg = 'role must be in %s.' % str(available_roles)
+                    return api_error(status.HTTP_400_BAD_REQUEST, error_msg)
+
+        # additional account info check
         name = request.data.get("name", None)
         if name is not None:
             if len(name) > 64:
@@ -186,35 +215,32 @@ class Account(APIView):
                 return api_error(status.HTTP_400_BAD_REQUEST,
                         _(u"Name should not include '/'."))
 
-        #argument check for loginid
         loginid = request.data.get("login_id", None)
         if loginid is not None:
             loginid = loginid.strip()
             if loginid == "":
                 return api_error(status.HTTP_400_BAD_REQUEST,
                             _(u"Login id can't be empty"))
+
             usernamebyloginid = Profile.objects.get_username_by_login_id(loginid)
             if usernamebyloginid is not None:
                 return api_error(status.HTTP_400_BAD_REQUEST,
                           _(u"Login id %s already exists." % loginid))
 
-        # argument check for department
         department = request.data.get("department", None)
         if department is not None:
             if len(department) > 512:
                 return api_error(status.HTTP_400_BAD_REQUEST,
                         _(u'Department is too long (maximum is 512 characters)'))
 
-        # argument check for institution
         institution = request.data.get("institution", None)
         if institution is not None and institution != '':
             try:
-                obj_insti = Institution.objects.get(name=institution)
+                Institution.objects.get(name=institution)
             except Institution.DoesNotExist:
                 return api_error(status.HTTP_400_BAD_REQUEST,
                                 "Institution %s does not exist" % institution)
 
-        # argument check for storage
         space_quota_mb = request.data.get("storage", None)
         if space_quota_mb is not None:
             if space_quota_mb == '':
@@ -233,13 +259,13 @@ class Account(APIView):
 
             if is_org_context(request):
                 org_id = request.user.org.org_id
-                org_quota_mb = seaserv.seafserv_threaded_rpc.get_org_quota(org_id) / \
+                org_quota_mb = seafile_api.get_org_quota(org_id) / \
                         get_file_size_unit('MB')
+
                 if space_quota_mb > org_quota_mb:
                     return api_error(status.HTTP_400_BAD_REQUEST, \
                             _(u'Failed to set quota: maximum quota is %d MB' % org_quota_mb))
 
-        # argument check for is_trial
         is_trial = request.data.get("is_trial", None)
         if is_trial is not None:
             try:
@@ -248,85 +274,52 @@ class Account(APIView):
                 return api_error(status.HTTP_400_BAD_REQUEST,
                         'is_trial invalid')
 
+        # check if user exists
         try:
-            # update account basic info
             user = User.objects.get(email=email)
-            # argument check for is_staff
-            is_staff = request.data.get("is_staff", None)
-            if is_staff is not None:
-                try:
-                    is_staff = to_python_boolean(is_staff)
-                except ValueError:
-                    return api_error(status.HTTP_400_BAD_REQUEST,
-                            'is_staff invalid.')
-
-                user.is_staff = is_staff
-
-            # argument check for is_active
-            is_active = request.data.get("is_active", None)
-            if is_active is not None:
-                try:
-                    is_active = to_python_boolean(is_active)
-                except ValueError:
-                    return api_error(status.HTTP_400_BAD_REQUEST,
-                            'is_active invalid.')
-
-                user.is_active = is_active
-
-            # update password
-            password = request.data.get("password", None)
-            if password is not None:
-                user.set_password(password)
-
-            # save user
-            result_code = user.save()
-            if result_code == -1:
-                return api_error(status.HTTP_520_OPERATION_FAILED,
-                                 'Failed to update user.')
-
-            try:
-                # update account additional info
-                self._update_account_additional_info(request, email)
-            except Exception as e:
-                logger.error(e)
-                return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        'Internal Server Error')
-
-            # get account info and return
-            info = get_account_info(user)
-            return Response(info)
-
+            user_exists = True
         except User.DoesNotExist:
-            # create user account
-            copy = request.data.copy()
-            copy['email'] = email
-            serializer = AccountSerializer(data=copy)
-            if not serializer.is_valid():
-                return api_error(status.HTTP_400_BAD_REQUEST, serializer.errors)
+            user_exists = False
 
+        # if user does not exist, create it first
+        if not user_exists:
             try:
-                user = User.objects.create_user(serializer.data['email'],
-                                                serializer.data['password'],
-                                                serializer.data['is_staff'],
-                                                serializer.data['is_active'])
+                user = User.objects.create_user(email)
             except User.DoesNotExist as e:
                 logger.error(e)
                 return api_error(status.HTTP_520_OPERATION_FAILED,
                                  'Failed to add user.')
 
-            try:
-                # update account additional info
-                self._update_account_additional_info(request, email)
-            except Exception as e:
-                logger.error(e)
-                return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        'Internal Server Error')
+        try:
+            # update basic info
+            password = request.data.get("password", None)
+            if password is not None:
+                user.set_password(password)
+            user.is_active = is_active
+            user.is_staff = is_staff
+            user.role = role
 
-            # get account info and return
-            info = get_account_info(user)
+            result_code = user.save()
+            if result_code == -1:
+                return api_error(status.HTTP_520_OPERATION_FAILED,
+                                 'Failed to update user.')
+
+            # update additional info
+            self._update_account_info(request, email)
+        except Exception as e:
+            logger.error(e)
+            return api_error(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    'Internal Server Error')
+
+        # get account info and return
+        info = get_account_info(user)
+        if user_exists:
+            resp = Response(info)
+        else:
             resp = Response(info, status=status.HTTP_201_CREATED)
-            resp['Location'] = reverse('api2-account', args=[email])
-            return resp
+
+        resp['Location'] = reverse('api2-account', args=[email])
+        return resp
 
     def delete(self, request, email, format=None):
         if not is_valid_username(email):

@@ -114,9 +114,3 @@ class AuthTokenSerializer(serializers.Serializer):
             self.two_factor_auth_failed = True
             msg = 'Two factor auth token is invalid.'
             raise serializers.ValidationError(msg)
-
-class AccountSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField()
-    is_staff = serializers.BooleanField(default=False)
-    is_active = serializers.BooleanField(default=True)
