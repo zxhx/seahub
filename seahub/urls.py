@@ -34,7 +34,6 @@ from seahub.api2.endpoints.file import FileView
 from seahub.api2.endpoints.dir import DirView, DirDetailView
 from seahub.api2.endpoints.file_tag import FileTagView
 from seahub.api2.endpoints.file_tag import FileTagsView
-from seahub.api2.endpoints.dir import DirView
 from seahub.api2.endpoints.repo_trash import RepoTrash
 from seahub.api2.endpoints.deleted_repos import DeletedRepos
 from seahub.api2.endpoints.repo_history import RepoHistory
@@ -51,6 +50,7 @@ from seahub.api2.endpoints.user_enabled_modules import UserEnabledModulesView
 from seahub.api2.endpoints.repo_file_uploaded_bytes import RepoFileUploadedBytesView
 from seahub.api2.endpoints.user_avatar import UserAvatarView
 from seahub.api2.endpoints.revision_tag import TaggedItemsView,TagNamesView
+from seahub.api2.endpoints.user import User
 
 # Admin
 from seahub.api2.endpoints.admin.revision_tag import AdminTaggedItemsView
@@ -197,6 +197,9 @@ urlpatterns = patterns(
     ### Apps ###
     (r'^api2/', include('seahub.api2.urls')),
 
+    ## user
+    url(r'^api/v2.1/user/$', User.as_view(), name="api-v2.1-user"),
+
     ## user::groups
     url(r'^api/v2.1/groups/$', Groups.as_view(), name='api-v2.1-groups'),
     url(r'^api/v2.1/groups/all/$', AllGroupsView.as_view(), name='api-v2.1-all-groups'),
@@ -254,7 +257,6 @@ urlpatterns = patterns(
     url(r'^api/v2.1/notifications/$', NotificationsView.as_view(), name='api-v2.1-notifications'),
     url(r'^api/v2.1/notification/$', NotificationView.as_view(), name='api-v2.1-notification'),
     url(r'^api/v2.1/user-enabled-modules/$', UserEnabledModulesView.as_view(), name='api-v2.1-user-enabled-module'),
-
 
     ## user::invitations
     url(r'^api/v2.1/invitations/$', InvitationsView.as_view()),
