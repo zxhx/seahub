@@ -37,6 +37,8 @@
         <span class="vam">{% blocktrans %}Remember me for {{remember_days}} days {% endblocktrans %}</span>
     </label>
 
+    <a href="{% url 'oauth_login' 'weixin' %}" title="{% trans "Log in With weixin" %}">{% trans "Log in With weixin" %}</a>
+
     <input type="submit" value="{% trans "Log In" %}" class="submit" />
     {% if enable_signup %}
     <a href="{{ signup_url }}">{% trans "Signup" %}</a>

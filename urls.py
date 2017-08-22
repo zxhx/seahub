@@ -97,6 +97,7 @@ urlpatterns = patterns(
     (r'^accounts/', include('seahub.base.registration_urls')),
     (r'^sso/$', sso),
     url(r'^shib-login/', shib_login, name="shib_login"),
+    (r'^oauth/', include('seahub.oauth.urls')),
 
     url(r'^$', libraries, name='libraries'),
     #url(r'^home/$', direct_to_template, { 'template': 'home.html' } ),
