@@ -1,5 +1,10 @@
 [![Build Status](https://secure.travis-ci.org/haiwen/seahub.svg?branch=master)](http://travis-ci.org/haiwen/seahub)
 
+<a href="https://scan.coverity.com/projects/haiwen-seahub">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/13588/badge.svg"/>
+</a>
+
 Introduction
 ==========
 
