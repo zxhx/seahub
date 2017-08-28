@@ -66,6 +66,19 @@ def update_user_info(request):
         profile.nickname = name
         profile.save()
 
+    # update account loginid
+    loginid = request.data.get("login_id", '').strip()
+    if loginid:
+        profile = Profile.objects.get_profile_by_user(email)
+        if profile is None:
+            profile = Profile(user=email)
+        profile.login_id = loginid
+        profile.save()
+
+    reference_id = request.data.get("reference_id")
+    if reference_id:
+        ccnet_api.set_reference_id(email, reference_id)
+
     department = request.data.get("department")
     if department:
         d_profile = DetailedProfile.objects.get_detailed_profile_by_user(email)
@@ -88,15 +101,18 @@ def get_user_info(email):
 
     user = User.objects.get(email=email)
     d_profile = DetailedProfile.objects.get_detailed_profile_by_user(email)
+    profile = Profile.objects.get_profile_by_user(email)
 
     info = {}
     info['email'] = email
     info['name'] = email2nickname(email)
     info['contact_email'] = email2contact_email(email)
+    info['login_id'] = profile.login_id if profile else ''
 
     info['is_staff'] = user.is_staff
     info['is_active'] = user.is_active
     info['create_time'] = user.ctime
+    info['reference_id'] = user.reference_id
 
     info['department'] = d_profile.department if d_profile else ''
 
@@ -299,6 +315,23 @@ class AdminUser(APIView):
             if "/" in name:
                 error_msg = "Name should not include '/'."
                 return api_error(status.HTTP_400_BAD_REQUEST, error_msg)
+
+        # argument check for loginid
+        loginid = request.data.get("login_id", None)
+        if loginid is not None:
+            loginid = loginid.strip()
+            if loginid == "":
+                return api_error(status.HTTP_400_BAD_REQUEST,
+                            _(u"Login id can't be empty"))
+            usernamebyloginid = Profile.objects.get_username_by_login_id(loginid)
+            if usernamebyloginid is not None:
+                return api_error(status.HTTP_400_BAD_REQUEST,
+                          _(u"Login id %s already exists." % loginid))
+
+        reference_id = request.data.get("reference_id", None)
+        if reference_id:
+            if not is_valid_username(reference_id):
+                return api_error(status.HTTP_400_BAD_REQUEST, 'Reference ID %s invalid.' % reference_id)
 
         department = request.data.get("department", None)
         if department:
