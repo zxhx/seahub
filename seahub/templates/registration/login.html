@@ -42,6 +42,16 @@
     <a href="{{ signup_url }}">{% trans "Signup" %}</a>
     {% endif %}
 
+    <br />
+    <a href="{% url 'oauth_login' 'github' %}" title="{% trans "Log in With Github" %}">{% trans "Log in With Github" %}</a>
+    <br />
+    <a href="{% url 'oauth_login' 'google' %}" title="{% trans "Log in With Google" %}">{% trans "Log in With Google" %}</a>
+    <br />
+    <a href="{% url 'oauth_login' 'weixin' %}" title="{% trans "Log in With weixin" %}">{% trans "Log in With WeiXin" %}</a>
+    <br />
+    <a href="{% url 'oauth_login' 'adfs' %}" title="{% trans "Log in With adfs" %}">{% trans "Log in With ADFS" %}</a>
+    <br />
+
     {% if enable_adfs_login %}
     <button id="adfs-login" class="submit fright">ADFS</button>
     {% endif %}
