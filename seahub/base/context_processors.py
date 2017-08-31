@@ -20,6 +20,8 @@ from seahub.settings import SEAFILE_VERSION, SITE_TITLE, SITE_NAME, \
     FAVICON_PATH, ENABLE_THUMBNAIL, THUMBNAIL_SIZE_FOR_ORIGINAL, \
     MEDIA_ROOT, SHOW_LOGOUT_ICON, CUSTOM_LOGO_PATH, CUSTOM_FAVICON_PATH
 
+from seahub.constants import DEFAULT_ADMIN
+
 try:
     from seahub.settings import SEACLOUD_MODE
 except ImportError:
@@ -77,7 +79,7 @@ def base(request):
         if os.path.exists(custom_favicon_file):
             favicon_path = CUSTOM_FAVICON_PATH
 
-    return {
+    result = {
         'seafile_version': SEAFILE_VERSION,
         'site_title': SITE_TITLE,
         'branding_css': BRANDING_CSS,
@@ -111,4 +113,21 @@ def base(request):
         'enable_terms_and_conditions': dj_settings.ENABLE_TERMS_AND_CONDITIONS,
         'show_logout_icon': SHOW_LOGOUT_ICON,
         'is_pro': True if is_pro_version() else False,
+    }
+
+    if request.user.is_staff:
+        admin_permissions = {
+            'can_view_system_info': request.user.admin_permissions.can_view_system_info(),
+            'can_view_statistic': request.user.admin_permissions.can_view_statistic(),
+            'can_manage_library': request.user.admin_permissions.can_manage_library(),
+            "can_config_system": request.user.admin_permissions.can_config_system(),
+            "can_manage_user": request.user.admin_permissions.can_manage_user(),
+            "can_manage_group": request.user.admin_permissions.can_manage_group(),
+            "can_view_user_log": request.user.admin_permissions.can_view_user_log(),
+            "can_view_admin_log": request.user.admin_permissions.can_view_admin_log(),
         }
+
+        result['admin_permissions'] = admin_permissions
+        result['is_default_admin'] = request.user.admin_role == DEFAULT_ADMIN
+
+    return result
