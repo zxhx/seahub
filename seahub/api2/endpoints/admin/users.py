@@ -66,13 +66,13 @@ def update_user_info(request):
         profile.nickname = name
         profile.save()
 
-    # update account loginid
-    loginid = request.data.get("login_id", '').strip()
-    if loginid:
+    # update account login_id
+    login_id = request.data.get("login_id", '').strip()
+    if login_id:
         profile = Profile.objects.get_profile_by_user(email)
         if profile is None:
             profile = Profile(user=email)
-        profile.login_id = loginid
+        profile.login_id = login_id
         profile.save()
 
     reference_id = request.data.get("reference_id")
@@ -316,17 +316,17 @@ class AdminUser(APIView):
                 error_msg = "Name should not include '/'."
                 return api_error(status.HTTP_400_BAD_REQUEST, error_msg)
 
-        # argument check for loginid
-        loginid = request.data.get("login_id", None)
-        if loginid is not None:
-            loginid = loginid.strip()
-            if loginid == "":
+        # argument check for login_id
+        login_id = request.data.get("login_id", None)
+        if login_id is not None:
+            login_id = login_id.strip()
+            if login_id == "":
                 return api_error(status.HTTP_400_BAD_REQUEST,
                             _(u"Login id can't be empty"))
-            usernamebyloginid = Profile.objects.get_username_by_login_id(loginid)
-            if usernamebyloginid is not None:
+            username_by_login_id = Profile.objects.get_username_by_login_id(login_id)
+            if username_by_login_id is not None:
                 return api_error(status.HTTP_400_BAD_REQUEST,
-                          _(u"Login id %s already exists." % loginid))
+                          _(u"Login id %s already exists." % login_id))
 
         reference_id = request.data.get("reference_id", None)
         if reference_id:
