@@ -722,7 +722,7 @@ def user_info(request, email):
             'personal_groups': personal_groups,
             'two_factor_auth_enabled': _has_two_factor_auth,
             'default_device': _default_device,
-            'reference_id': reference_id if reference_id else email,
+            'reference_id': reference_id if reference_id else '',
         }, context_instance=RequestContext(request))
 
 @login_required_ajax
