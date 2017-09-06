@@ -102,8 +102,8 @@ class Groups(APIView):
             error_msg = 'with_repos invalid.'
             return api_error(status.HTTP_400_BAD_REQUEST, error_msg)
 
-        all_group_admin_recrods = ExtraGroupsSharePermission.objects.get_all_admin_records()
-        all_group_admin_recrods = [(e.repo_id, e.group_id)for e in all_group_admin_recrods]
+        all_group_admin_records = ExtraGroupsSharePermission.objects.get_all_admin_records()
+        all_group_admin_records = [(e.repo_id, e.group_id)for e in all_group_admin_records]
         groups = []
         for g in user_groups:
             group_info = get_group_info(request, g.id , avatar_size)
@@ -127,7 +127,7 @@ class Groups(APIView):
                         "permission": r.permission,
                         "owner": r.user,
                         "owner_name": email2nickname(r.user),
-                        "is_admin": (str(r.id), str(g.id)) in all_group_admin_recrods
+                        "is_admin": (str(r.id), str(g.id)) in all_group_admin_records
                     }
                     repos.append(repo)
 
